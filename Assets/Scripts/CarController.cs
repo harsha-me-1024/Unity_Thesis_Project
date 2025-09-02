@@ -4,23 +4,19 @@ using UnityEngine;
 public class CarController : MonoBehaviour
 {
     private float horizontalInput, verticalInput;
-    private float currentSteerAngle, currentbreakForce;
-    private bool isBreaking;
+    private float currentSteerAngle, currentBrakeForce;
+    private bool isBraking;
 
-    // Settings
     [SerializeField] private float motorForce = 1500f;
-    [SerializeField] private float breakForce = 3000f;
-    [SerializeField] private float maxSteerAngle = 30f;
+    [SerializeField] private float brakeForce = 3000f;
+    [SerializeField] private float maxSteerAngle = 25f;
 
-    // Rigidbody and Center of Mass
     private Rigidbody rb;
     [SerializeField] private Transform centerOfMassTransform;
 
-    // Wheel Colliders
     [SerializeField] private WheelCollider frontLeftWheelCollider, frontRightWheelCollider;
     [SerializeField] private WheelCollider rearLeftWheelCollider, rearRightWheelCollider;
 
-    // Wheel Mesh Transforms
     [SerializeField] private Transform frontLeftWheelTransform, frontRightWheelTransform;
     [SerializeField] private Transform rearLeftWheelTransform, rearRightWheelTransform;
 
@@ -28,16 +24,15 @@ public class CarController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
 
-        // Lower the center of mass to improve stability
         if (centerOfMassTransform != null)
-        {
             rb.centerOfMass = centerOfMassTransform.localPosition;
-        }
         else
-        {
-            // Fallback — lower center of mass slightly even without external Transform
-            rb.centerOfMass = new Vector3(0f, -0.9f, 0f);
-        }
+            rb.centerOfMass = new Vector3(0f, -0.5f, 0f);
+
+        SetupWheelFriction(frontLeftWheelCollider);
+        SetupWheelFriction(frontRightWheelCollider);
+        SetupWheelFriction(rearLeftWheelCollider);
+        SetupWheelFriction(rearRightWheelCollider);
     }
 
     private void FixedUpdate()
@@ -51,24 +46,27 @@ public class CarController : MonoBehaviour
     private void GetInput()
     {
         horizontalInput = Input.GetAxis("Horizontal");
-        verticalInput = Input.GetAxis("Vertical");
-        isBreaking = Input.GetKey(KeyCode.Space);
+        verticalInput = Input.GetAxis("Vertical"); 
+        isBraking = Input.GetKey(KeyCode.Space);
     }
-
     private void HandleMotor()
     {
-        frontLeftWheelCollider.motorTorque = verticalInput * motorForce;
-        frontRightWheelCollider.motorTorque = verticalInput * motorForce;
-        currentbreakForce = isBreaking ? breakForce : 0f;
+        rearLeftWheelCollider.motorTorque = verticalInput * motorForce;
+        rearRightWheelCollider.motorTorque = verticalInput * motorForce;
+
+        frontLeftWheelCollider.motorTorque = 0f;
+        frontRightWheelCollider.motorTorque = 0f;
+
+        currentBrakeForce = isBraking ? brakeForce : 0f;
         ApplyBraking();
     }
 
     private void ApplyBraking()
     {
-        frontRightWheelCollider.brakeTorque = currentbreakForce;
-        frontLeftWheelCollider.brakeTorque = currentbreakForce;
-        rearLeftWheelCollider.brakeTorque = currentbreakForce;
-        rearRightWheelCollider.brakeTorque = currentbreakForce;
+        frontLeftWheelCollider.brakeTorque = currentBrakeForce;
+        frontRightWheelCollider.brakeTorque = currentBrakeForce;
+        rearLeftWheelCollider.brakeTorque = currentBrakeForce;
+        rearRightWheelCollider.brakeTorque = currentBrakeForce;
     }
 
     private void HandleSteering()
@@ -93,5 +91,18 @@ public class CarController : MonoBehaviour
         wheelCollider.GetWorldPose(out pos, out rot);
         wheelTransform.position = pos;
         wheelTransform.rotation = rot;
+    }
+
+    private void SetupWheelFriction(WheelCollider wheel)
+    {
+        WheelFrictionCurve forwardFriction = wheel.forwardFriction;
+        WheelFrictionCurve sidewaysFriction = wheel.sidewaysFriction;
+
+        forwardFriction.stiffness = 1.5f;
+
+        sidewaysFriction.stiffness = 2.5f;
+
+        wheel.forwardFriction = forwardFriction;
+        wheel.sidewaysFriction = sidewaysFriction;
     }
 }
